@@ -1,83 +1,72 @@
 import { client } from '@/lib/sanity'
 
-// This function fetches characters from Sanity at build time
-async function getCharacters() {
-  const query = `*[_type == "character"] {
-    name,
-    role,
-    type,
-    race,
-    class,
-    hp,
-    ac,
-    traits,
-    backstory,
-    location-> {
-      name
-    },
-    seasons[]-> {
-      seasonNumber,
-      title
-    }
-  }`
-
-  const characters = await client.fetch(query)
-  return characters
+async function getLatestSession() {
+    const query = `*[_type == "session"] | order(date desc)[0] {
+        sessionNumber,
+        title,
+        summary,
+        date
+    }`
+    return await client.fetch(query)
 }
 
-export default async function Home() {
-  const characters = await getCharacters()
+async function getSeasons() {
+    const query = `*[_type == "season"] | order(seasonNumber asc) {
+        seasonNumber,
+        title,
+        description
+    }`
+    return await client.fetch(query)
+}
 
-  return (
-      <main className="min-h-screen bg-black p-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl font-serif text-amber-400 text-center mb-2">The Grey Company</h1>
-          <p className="text-center text-amber-600 mb-8">Characters from the campaign</p>
+export default async function HomePage() {
+    const latestSession = await getLatestSession()
+    const seasons = await getSeasons()
 
-          {characters.length === 0 ? (
-              <p className="text-center text-gray-500">No characters found. Add some in Sanity Studio!</p>
-          ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {characters.map((char: any) => (
-                    <div key={char.name} className="bg-gray-900 border border-amber-800 rounded-lg p-4 hover:border-amber-500 transition-all">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-900 to-amber-950 flex items-center justify-center text-2xl">
-                          {char.type === 'PC' ? '⚔️' : '👤'}
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-serif text-amber-400">{char.name}</h2>
-                          <p className="text-sm text-amber-600">{char.role || 'No role'}</p>
-                          <span className="text-xs px-2 py-0.5 bg-amber-900/30 text-amber-500 rounded">
-                      {char.type}
-                    </span>
-                        </div>
-                      </div>
+    return (
+        <main className="min-h-screen bg-black">
+            {/* Hero Section */}
+            <div className="relative bg-gradient-to-b from-amber-950/20 to-transparent py-16 text-center border-b border-amber-800/30">
+                <h1 className="text-5xl md:text-6xl font-serif text-amber-400 mb-4 tracking-wide">
+                    The Iron Chronicle
+                </h1>
+                <p className="text-amber-600 text-sm tracking-wider max-w-2xl mx-auto px-4">
+                    A campaign of conquest, betrayal & glory in the fractured kingdom of Valdris
+                </p>
+            </div>
 
-                      <div className="flex gap-2 mb-3 flex-wrap">
-                        {char.race && <span className="text-xs text-gray-400">{char.race}</span>}
-                        {char.class && <span className="text-xs text-gray-400">{char.class}</span>}
-                        {char.hp && <span className="text-xs text-gray-400">HP: {char.hp}</span>}
-                        {char.ac && <span className="text-xs text-gray-400">AC: {char.ac}</span>}
-                      </div>
-
-                      {char.traits && char.traits.length > 0 && (
-                          <div className="flex gap-1 mb-3 flex-wrap">
-                            {char.traits.map((trait: string) => (
-                                <span key={trait} className="text-xs px-2 py-0.5 border border-amber-800 text-amber-500 rounded">
-                        {trait}
-                      </span>
-                            ))}
-                          </div>
-                      )}
-
-                      {char.location && (
-                          <p className="text-xs text-gray-500 mt-2">📍 {char.location.name}</p>
-                      )}
+            {/* Latest Session */}
+            {latestSession && (
+                <div className="max-w-4xl mx-auto px-4 py-12">
+                    <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-amber-800/30 rounded-lg p-6">
+                        <div className="text-xs text-amber-500 tracking-wider mb-2">LATEST SESSION</div>
+                        <h2 className="text-2xl font-serif text-amber-400 mb-2">
+                            Session {latestSession.sessionNumber}: {latestSession.title}
+                        </h2>
+                        <p className="text-gray-400 leading-relaxed">{latestSession.summary}</p>
                     </div>
-                ))}
-              </div>
-          )}
-        </div>
-      </main>
-  )
+                </div>
+            )}
+
+            {/* Seasons Grid */}
+            <div className="max-w-6xl mx-auto px-4 py-12">
+                <h2 className="text-2xl font-serif text-amber-400 text-center mb-8">Seasons</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {seasons.map((season: any) => (
+                        <a
+                            key={season.seasonNumber}
+                            href={`/season/${season.seasonNumber}`}
+                            className="block bg-gradient-to-b from-gray-900 to-gray-950 border border-amber-800/30 rounded-lg p-6 hover:border-amber-600/50 transition-all hover:translate-y-[-4px] group"
+                        >
+                            <div className="text-sm text-amber-600 mb-2">Season {season.seasonNumber}</div>
+                            <h3 className="text-xl font-serif text-amber-400 mb-2 group-hover:text-amber-300">
+                                {season.title}
+                            </h3>
+                            <p className="text-gray-400 text-sm">{season.description}</p>
+                        </a>
+                    ))}
+                </div>
+            </div>
+        </main>
+    )
 }
