@@ -3,6 +3,7 @@
 import { SanityCharacter } from '@/types/sanity'
 import { urlFor } from '@/lib/sanity'
 import Image from 'next/image'
+import Link from 'next/link'
 
 interface CharacterModalProps {
     character: SanityCharacter | null
@@ -70,7 +71,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                 <div className="p-6 pt-0">
                     {/* Header with portrait */}
                     <div className="flex gap-6 mb-6 flex-wrap">
-                        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 border-2 border-amber-500 flex items-center justify-center text-5xl shadow-xl shrink-0 overflow-hidden">
+                        <div
+                            className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 border-2 border-amber-500 flex items-center justify-center text-5xl shadow-xl shrink-0 overflow-hidden">
                             {character.portrait ? (
                                 <Image
                                     src={urlFor(character.portrait)?.width(150).height(150).url() ?? ''}
@@ -87,7 +89,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                             <div className="flex items-center gap-3 flex-wrap mb-2">
                                 <h2 className="text-3xl font-serif text-amber-400">{character.name}</h2>
                                 {character.status && character.status !== 'active' && (
-                                    <span className={`text-xs px-2 py-1 rounded border ${getStatusStyles(character.status)}`}>
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded border ${getStatusStyles(character.status)}`}>
                                         {character.status.toUpperCase()}
                                     </span>
                                 )}
@@ -98,22 +101,26 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                                     {character.type}
                                 </span>
                                 {character.race && (
-                                    <span className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
+                                    <span
+                                        className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
                                         {character.race}{character.subrace ? ` (${character.subrace})` : ''}
                                     </span>
                                 )}
                                 {character.class && (
-                                    <span className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
+                                    <span
+                                        className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
                                         {character.class}{character.subclass ? ` (${character.subclass})` : ''}
                                     </span>
                                 )}
                                 {character.background && (
-                                    <span className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
+                                    <span
+                                        className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
                                         {character.background}
                                     </span>
                                 )}
                                 {character.alignment && (
-                                    <span className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
+                                    <span
+                                        className="text-xs px-2 py-1 border border-amber-800/50 text-gray-400 rounded">
                                         {character.alignment}
                                     </span>
                                 )}
@@ -124,13 +131,24 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                     {/* Physical Appearance */}
                     {(character.age || character.height || character.weight || character.eyeColor || character.hairColor) && (
                         <div className="mb-6">
-                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">PHYSICAL APPEARANCE</h3>
+                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">PHYSICAL
+                                APPEARANCE</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                                {character.age && <div><span className="text-xs text-gray-500 block">AGE</span><div className="text-sm text-gray-300">{character.age}</div></div>}
-                                {character.height && <div><span className="text-xs text-gray-500 block">HEIGHT</span><div className="text-sm text-gray-300">{character.height}</div></div>}
-                                {character.weight && <div><span className="text-xs text-gray-500 block">WEIGHT</span><div className="text-sm text-gray-300">{character.weight}</div></div>}
-                                {character.eyeColor && <div><span className="text-xs text-gray-500 block">EYES</span><div className="text-sm text-gray-300">{character.eyeColor}</div></div>}
-                                {character.hairColor && <div><span className="text-xs text-gray-500 block">HAIR</span><div className="text-sm text-gray-300">{character.hairColor}</div></div>}
+                                {character.age && <div><span className="text-xs text-gray-500 block">AGE</span>
+                                    <div className="text-sm text-gray-300">{character.age}</div>
+                                </div>}
+                                {character.height && <div><span className="text-xs text-gray-500 block">HEIGHT</span>
+                                    <div className="text-sm text-gray-300">{character.height}</div>
+                                </div>}
+                                {character.weight && <div><span className="text-xs text-gray-500 block">WEIGHT</span>
+                                    <div className="text-sm text-gray-300">{character.weight}</div>
+                                </div>}
+                                {character.eyeColor && <div><span className="text-xs text-gray-500 block">EYES</span>
+                                    <div className="text-sm text-gray-300">{character.eyeColor}</div>
+                                </div>}
+                                {character.hairColor && <div><span className="text-xs text-gray-500 block">HAIR</span>
+                                    <div className="text-sm text-gray-300">{character.hairColor}</div>
+                                </div>}
                             </div>
                             {character.distinguishingMarks && (
                                 <p className="text-xs text-gray-500 mt-2">{character.distinguishingMarks}</p>
@@ -141,10 +159,12 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                     {/* Personality Traits */}
                     {character.personalityTraits && character.personalityTraits.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">PERSONALITY TRAITS</h3>
+                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">PERSONALITY
+                                TRAITS</h3>
                             <div className="flex gap-2 flex-wrap mt-3">
                                 {character.personalityTraits.map((trait: string) => (
-                                    <span key={trait} className="text-xs px-3 py-1 border border-amber-700/50 text-amber-400 rounded-full">
+                                    <span key={trait}
+                                          className="text-xs px-3 py-1 border border-amber-700/50 text-amber-400 rounded-full">
                                         {trait}
                                     </span>
                                 ))}
@@ -201,7 +221,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                                 <h3 className="text-xs font-serif text-amber-500 mb-1 tracking-wider">FAMILY</h3>
                                 <div className="flex gap-1 flex-wrap">
                                     {character.family.map((member) => (
-                                        <span key={member._id} className="text-xs px-2 py-1 bg-amber-900/30 text-amber-400 rounded">
+                                        <span key={member._id}
+                                              className="text-xs px-2 py-1 bg-amber-900/30 text-amber-400 rounded">
                                             {member.name}
                                         </span>
                                     ))}
@@ -213,7 +234,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                                 <h3 className="text-xs font-serif text-amber-500 mb-1 tracking-wider">ALLIES</h3>
                                 <div className="flex gap-1 flex-wrap">
                                     {character.allies.map((ally) => (
-                                        <span key={ally._id} className="text-xs px-2 py-1 bg-green-900/30 text-green-400 rounded">
+                                        <span key={ally._id}
+                                              className="text-xs px-2 py-1 bg-green-900/30 text-green-400 rounded">
                                             {ally.name}
                                         </span>
                                     ))}
@@ -225,7 +247,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                                 <h3 className="text-xs font-serif text-amber-500 mb-1 tracking-wider">RIVALS</h3>
                                 <div className="flex gap-1 flex-wrap">
                                     {character.rivals.map((rival) => (
-                                        <span key={rival._id} className="text-xs px-2 py-1 bg-red-900/30 text-red-400 rounded">
+                                        <span key={rival._id}
+                                              className="text-xs px-2 py-1 bg-red-900/30 text-red-400 rounded">
                                             {rival.name}
                                         </span>
                                     ))}
@@ -239,8 +262,13 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                         <div className="mb-6">
                             <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">FAITH</h3>
                             <div className="flex gap-4 mt-3">
-                                {character.deity && <div><span className="text-xs text-gray-500 block">DEITY</span><div className="text-sm text-gray-300">{character.deity}</div></div>}
-                                {character.religion && <div><span className="text-xs text-gray-500 block">RELIGION</span><div className="text-sm text-gray-300">{character.religion}</div></div>}
+                                {character.deity && <div><span className="text-xs text-gray-500 block">DEITY</span>
+                                    <div className="text-sm text-gray-300">{character.deity}</div>
+                                </div>}
+                                {character.religion &&
+                                    <div><span className="text-xs text-gray-500 block">RELIGION</span>
+                                        <div className="text-sm text-gray-300">{character.religion}</div>
+                                    </div>}
                             </div>
                         </div>
                     )}
@@ -248,10 +276,12 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                     {/* Factions */}
                     {character.factions && character.factions.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">FACTIONS & AFFILIATIONS</h3>
+                            <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">FACTIONS
+                                & AFFILIATIONS</h3>
                             <div className="flex gap-2 flex-wrap mt-3">
                                 {character.factions.map((faction) => (
-                                    <span key={faction._id} className="text-xs px-3 py-1 border border-amber-700/50 text-amber-400 rounded-full">
+                                    <span key={faction._id}
+                                          className="text-xs px-3 py-1 border border-amber-700/50 text-amber-400 rounded-full">
                                         {faction.symbol || '🏛️'} {faction.name}
                                     </span>
                                 ))}
@@ -263,7 +293,8 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         {character.currentLocation && (
                             <div>
-                                <h3 className="text-xs font-serif text-amber-500 mb-1 tracking-wider">CURRENT LOCATION</h3>
+                                <h3 className="text-xs font-serif text-amber-500 mb-1 tracking-wider">CURRENT
+                                    LOCATION</h3>
                                 <p className="text-gray-400 text-sm">📍 {character.currentLocation.name}</p>
                             </div>
                         )}
@@ -281,13 +312,23 @@ export default function CharacterModal({ character, isOpen, onClose }: Character
                             <h3 className="text-sm font-serif text-amber-500 mb-2 tracking-wider border-b border-amber-800/30 inline-block">SEASONS</h3>
                             <div className="flex gap-2 flex-wrap mt-3">
                                 {character.seasons.map((season) => (
-                                    <span key={season.seasonNumber} className="text-xs px-2 py-1 bg-amber-900/30 text-amber-400 rounded">
+                                    <span key={season.seasonNumber}
+                                          className="text-xs px-2 py-1 bg-amber-900/30 text-amber-400 rounded">
                                         Season {season.seasonNumber}: {season.title}
                                     </span>
                                 ))}
                             </div>
                         </div>
                     )}
+
+                    <div className="mt-6 pt-4 border-t border-amber-800/30">
+                        <Link
+                            href={`/relationships?character=${encodeURIComponent(character.name)}`}
+                            className="inline-flex items-center gap-2 text-sm text-amber-500 hover:text-amber-300 transition"
+                        >
+                            <span>🔗</span> View in Relationship Network
+                        </Link>
+                    </div>
                 </div>
             </div>
         </>

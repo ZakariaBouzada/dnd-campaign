@@ -1,6 +1,9 @@
 import { client } from '@/lib/sanity'
 import { SanityCharacter } from '@/types/sanity'
 import CharactersClient from '@/components/CharactersClient'
+import { Suspense } from 'react'
+import LoadingSkeleton from '@/components/LoadingSkeleton'
+import BackNavigation from "@/components/BackNavigation";
 
 export const revalidate = 120
 
@@ -85,6 +88,7 @@ export default async function SeasonCharactersPage({
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-6xl mx-auto">
+                <BackNavigation customBackPath={`/season/${seasonNumber}`} customBackLabel="Season" />
                 <h1 className="text-4xl font-serif text-amber-400 text-center mb-2">
                     Characters of Season {seasonNumber}
                 </h1>
@@ -95,9 +99,13 @@ export default async function SeasonCharactersPage({
                 {characters.length === 0 ? (
                     <p className="text-center text-gray-500">No characters found for this season.</p>
                 ) : (
-                    <CharactersClient characters={characters} />
+                    // In your component:
+                    <Suspense fallback={<LoadingSkeleton />}>
+                        <CharactersClient characters={characters} />
+                    </Suspense>
                 )}
             </div>
         </main>
     )
+
 }

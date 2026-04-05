@@ -1,4 +1,5 @@
 import { client } from '@/lib/sanity'
+import BackNavigation from "@/components/BackNavigation";
 
 // Define types at the top
 interface TimelineCharacter {
@@ -40,6 +41,7 @@ export default async function SeasonTimelinePage({
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-4xl mx-auto">
+                <BackNavigation customBackPath={`/season/${seasonNumber}`} customBackLabel="Season" />
                 <h1 className="text-4xl font-serif text-amber-400 text-center mb-2">
                     Timeline of Season {seasonNumber}
                 </h1>

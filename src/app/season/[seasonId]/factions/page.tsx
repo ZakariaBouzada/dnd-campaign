@@ -1,4 +1,5 @@
 import { client } from '@/lib/sanity'
+import BackNavigation from "@/components/BackNavigation";
 
 interface FactionMember {
     name: string
@@ -54,6 +55,7 @@ export default async function SeasonFactionsPage({
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-6xl mx-auto">
+                <BackNavigation customBackPath={`/season/${seasonNumber}`} customBackLabel="Season" />
                 <h1 className="text-4xl font-serif text-amber-400 text-center mb-2">
                     Factions of Season {seasonNumber}
                 </h1>

@@ -1,7 +1,10 @@
+import BackNavigation from "@/components/BackNavigation";
+
 export default async function AboutPage() {
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-4xl mx-auto">
+                <BackNavigation />
                 <h1 className="text-4xl font-serif text-amber-400 text-center mb-2">About the Campaign</h1>
                 <p className="text-center text-amber-600 mb-8">The world &amp; its adventurers</p>
 

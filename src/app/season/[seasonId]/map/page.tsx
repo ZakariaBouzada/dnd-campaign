@@ -1,3 +1,6 @@
+import Link from 'next/link'
+import CK3MapWrapper from '@/components/CK3MapWrapper'
+
 export default async function SeasonMapPage({
                                                 params
                                             }: {
@@ -8,19 +11,38 @@ export default async function SeasonMapPage({
 
     return (
         <main className="min-h-screen bg-black p-8">
-            <div className="max-w-6xl mx-auto text-center">
-                <h1 className="text-4xl font-serif text-amber-400 mb-2">
-                    Map of Season {seasonNumber}
-                </h1>
-                <p className="text-amber-600 mb-8">Interactive map coming soon</p>
+            <div className="max-w-7xl mx-auto">
+                {/* Navigation */}
+                <div className="flex items-center justify-between mb-6 pb-3 border-b border-amber-800/30">
+                    <Link
+                        href={`/season/${seasonId}`}
+                        className="flex items-center gap-1 text-amber-600 hover:text-amber-400 transition text-sm group"
+                    >
+                        <span className="text-lg group-hover:-translate-x-0.5 transition-transform">←</span>
+                        <span>Back to Season</span>
+                    </Link>
+                    <Link href="/" className="text-xs text-gray-500 hover:text-amber-400 transition flex items-center gap-1">
+                        <span>🏠</span> Home
+                    </Link>
+                </div>
 
-                <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-amber-800/30 rounded-lg p-12">
-                    <div className="text-6xl mb-4">🗺️</div>
-                    <p className="text-gray-400">
-                        The interactive map with Leaflet is currently under development.
-                        <br />
-                        Check back soon for territories, location markers, and season filtering!
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-serif text-amber-400 mb-2">
+                        The Realm of Valdris
+                    </h1>
+                    <p className="text-amber-600 text-sm tracking-wider">
+                        Season {seasonNumber} · A fractured kingdom on the brink of war
                     </p>
+                    <div className="w-24 h-px bg-amber-700/50 mx-auto mt-4" />
+                </div>
+
+                {/* Map - fetches locations from Sanity */}
+                <CK3MapWrapper seasonId={seasonNumber} />
+
+                {/* Legend */}
+                <div className="mt-6 flex justify-center gap-4 flex-wrap">
+                    <div className="text-xs text-gray-500">📍 Click markers for location details</div>
+                    <div className="text-xs text-gray-500">🖱️ Hover to see location names</div>
                 </div>
             </div>
         </main>
