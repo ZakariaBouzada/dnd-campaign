@@ -1,23 +1,40 @@
+import { client } from '@/lib/sanity'
 import Link from 'next/link'
-import CK3MapWrapper from '@/components/CK3MapWrapper'
+import CK3MapClient from '@/components/CK3MapClient'
 
-export default async function SeasonMapPage({
-                                                params
-                                            }: {
-    params: Promise<{ seasonId: string }>
-}) {
+// Define the Location type
+interface Location {
+    _id: string
+    name: string
+    type: string
+    description?: string
+    coordinates?: { x: number; y: number }
+    faction?: { name: string; color: string }
+}
+
+async function getLocations(): Promise<Location[]> {
+    const query = `*[_type == "location"] {
+        _id,
+        name,
+        type,
+        description,
+        coordinates,
+        faction-> { name, color }
+    }`
+    const locations = await client.fetch(query)
+    return locations.filter((loc: Location) => loc.coordinates?.x && loc.coordinates?.y)
+}
+
+export default async function SeasonMapPage({ params }: { params: Promise<{ seasonId: string }> }) {
     const { seasonId } = await params
     const seasonNumber = parseInt(seasonId)
+    const locations = await getLocations()
 
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-7xl mx-auto">
-                {/* Navigation */}
                 <div className="flex items-center justify-between mb-6 pb-3 border-b border-amber-800/30">
-                    <Link
-                        href={`/season/${seasonId}`}
-                        className="flex items-center gap-1 text-amber-600 hover:text-amber-400 transition text-sm group"
-                    >
+                    <Link href={`/season/${seasonId}`} className="flex items-center gap-1 text-amber-600 hover:text-amber-400 transition text-sm group">
                         <span className="text-lg group-hover:-translate-x-0.5 transition-transform">←</span>
                         <span>Back to Season</span>
                     </Link>
@@ -27,22 +44,39 @@ export default async function SeasonMapPage({
                 </div>
 
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-serif text-amber-400 mb-2">
-                        The Realm of Valdris
-                    </h1>
-                    <p className="text-amber-600 text-sm tracking-wider">
-                        Season {seasonNumber} · A fractured kingdom on the brink of war
-                    </p>
+                    <h1 className="text-4xl font-serif text-amber-400 mb-2">The Realm of Valdris</h1>
+                    <p className="text-amber-600 text-sm tracking-wider">Season {seasonNumber}</p>
                     <div className="w-24 h-px bg-amber-700/50 mx-auto mt-4" />
                 </div>
 
-                {/* Map - fetches locations from Sanity */}
-                <CK3MapWrapper seasonId={seasonNumber} />
+                {/* Map with zoom and interactive markers - Client Component */}
+                <CK3MapClient
+                    mapImage="/images/maps/TestMapfordnd.png"
+                    locations={locations}
+                />
 
                 {/* Legend */}
-                <div className="mt-6 flex justify-center gap-4 flex-wrap">
-                    <div className="text-xs text-gray-500">📍 Click markers for location details</div>
-                    <div className="text-xs text-gray-500">🖱️ Hover to see location names</div>
+                <div className="mt-6 flex justify-center gap-6 flex-wrap">
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#c9a227]" />
+                        <span>City</span>
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#8b6914]" />
+                        <span>Town</span>
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#a02525]" />
+                        <span>Fortress</span>
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#4a8a40]" />
+                        <span>Forest</span>
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#6a6a6a]" />
+                        <span>Mountain</span>
+                    </div>
                 </div>
             </div>
         </main>

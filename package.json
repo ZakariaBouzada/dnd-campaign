@@ -21,6 +21,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0",
+    "react-zoom-pan-pinch": "^3.7.0",
     "vis-data": "^8.0.3",
     "vis-network": "^10.0.2"
   },
