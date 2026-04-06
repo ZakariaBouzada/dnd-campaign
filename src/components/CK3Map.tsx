@@ -144,8 +144,8 @@ export default function CK3Map({
                                                 key={location._id}
                                                 className="absolute cursor-pointer group"
                                                 style={{
-                                                    left: `${(location.coordinates!.x / 800) * 100}%`,
-                                                    top: `${(location.coordinates!.y / 600) * 100}%`,
+                                                    left: `${location.coordinates!.x}%`,
+                                                    top: `${location.coordinates!.y}%`,
                                                     transform: 'translate(-50%, -50%)'
                                                 }}
                                                 onMouseEnter={() => setHoveredLocation(location.name)}

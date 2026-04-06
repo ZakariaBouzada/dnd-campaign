@@ -1,38 +1,24 @@
-import { createClient } from '@sanity/client'
-import {createImageUrlBuilder} from '@sanity/image-url'
+import imageUrlBuilder from '@sanity/image-url'
+import { client } from './sanity'
 
-export const client = createClient({
-    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '98br97cf',
-    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production-dnd',
-    apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2024-04-01',
-    useCdn: false,
-    perspective: 'published',
-    ignoreBrowserTokenWarning: true,
-})
+const builder = imageUrlBuilder(client)
 
-// Image URL builder for Sanity images
-const builder = createImageUrlBuilder(client)
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function urlFor(source: any) {
-    if (!source) return null
     return builder.image(source)
 }
 
 // Helper function to get optimized map image
 export function getOptimizedMapImage(imageSource: any, width?: number, quality?: number) {
-    if (!imageSource) return null
-
     let urlBuilder = urlFor(imageSource)
-    if (!urlBuilder) return null
 
     // Auto format to WebP (smaller file size)
     urlBuilder = urlBuilder.format('webp')
 
-    // Set width if provided
+    // Set width if provided (defaults to responsive)
     if (width) {
         urlBuilder = urlBuilder.width(width)
     } else {
+        // Use responsive sizes based on viewport
         urlBuilder = urlBuilder.width(1920) // Max width for desktop
     }
 
