@@ -1,7 +1,7 @@
-import { getActiveMap, getAllLocations } from '@/lib/sanityQueries'
+import { getActiveMapForSeason, getAllLocationsForSeason } from '@/lib/sanityQueries'
 import { urlFor } from '@/lib/sanity'
 import Link from 'next/link'
-import CK3MapClient from '@/components/CK3MapClient'  // ← Use the client wrapper, not dynamic import
+import CK3MapClient from '@/components/CK3MapClient'
 
 interface Location {
     _id: string
@@ -16,9 +16,9 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
     const { seasonId } = await params
     const seasonNumber = parseInt(seasonId)
 
-    // Get season-specific map
-    const activeMap = await getActiveMap()
-    const locations = await getAllLocations()
+    // Get season-specific map and locations
+    const activeMap = await getActiveMapForSeason(seasonNumber)
+    const locations = await getAllLocationsForSeason(seasonNumber)
 
     // Generate optimized image URL with crop applied
     let optimizedMapUrl = '/images/maps/generic-map.png'
@@ -32,25 +32,23 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
                 .width(1920)
                 .quality(80)
 
-            // Apply crop if defined
-            if (activeMap.crop) {
-                const crop = activeMap.crop
-                builder = builder.rect(
-                    crop.x / 100,
-                    crop.y / 100,
-                    crop.width / 100,
-                    crop.height / 100
-                )
+            // Apply crop using PIXEL values (not percentages)
+            if (activeMap.pixelCrop) {
+                const pc = activeMap.pixelCrop
+                builder = builder.rect(pc.x, pc.y, pc.width, pc.height)
                 cropSettings = activeMap.crop
+                console.log('Applying pixel crop:', pc)
             }
 
             optimizedMapUrl = builder.url()
+            console.log('Final image URL:', optimizedMapUrl)
         }
     }
 
     return (
         <main className="min-h-screen bg-black p-8">
             <div className="max-w-7xl mx-auto">
+                {/* Navigation */}
                 <div className="flex items-center justify-between mb-6 pb-3 border-b border-amber-800/30">
                     <Link href={`/season/${seasonId}`} className="flex items-center gap-1 text-amber-600 hover:text-amber-400 transition text-sm group">
                         <span className="text-lg group-hover:-translate-x-0.5 transition-transform">←</span>
@@ -61,6 +59,7 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
                     </Link>
                 </div>
 
+                {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-serif text-amber-400 mb-2">
                         {activeMap?.name || 'The Realm of Valdris'}
@@ -68,13 +67,13 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
                     <p className="text-amber-600 text-sm tracking-wider">Season {seasonNumber}</p>
                     {cropSettings && (
                         <p className="text-xs text-gray-500 mt-2">
-                            📍 Revealed area of the full world
+                            🗺️ Region view
                         </p>
                     )}
                     <div className="w-24 h-px bg-amber-700/50 mx-auto mt-4" />
                 </div>
 
-                {/* Use the client wrapper - no dynamic import needed here */}
+                {/* Map - Client Component */}
                 <CK3MapClient
                     mapImage={optimizedMapUrl}
                     locations={locations}
