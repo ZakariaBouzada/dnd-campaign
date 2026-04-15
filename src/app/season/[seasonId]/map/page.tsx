@@ -1,4 +1,4 @@
-import { getActiveMapForSeason, getAllLocationsForSeason } from '@/lib/sanityQueries'
+import { getActiveMapForSeason, getAllLocationsForSeason, getAllFactionsForSeason } from '@/lib/sanityQueries'
 import { urlFor } from '@/lib/sanity'
 import Link from 'next/link'
 import CK3MapClient from '@/components/CK3MapClient'
@@ -12,13 +12,36 @@ interface Location {
     faction?: { name: string; color: string }
 }
 
+// UPDATED: Matches the multi-arrow structure used in the Client Component
+interface Faction {
+    _id: string
+    name: string
+    symbol?: string
+    color?: string
+    tagline?: string
+    goals?: string
+    territoryData?: {
+        type: 'polygon' | 'arrow'
+        polygonPoints?: Array<{ x: number; y: number }>
+        arrows?: Array<{
+            point: { x: number; y: number }
+            direction: string
+            label?: string
+        }>
+    }
+}
+
 export default async function SeasonMapPage({ params }: { params: Promise<{ seasonId: string }> }) {
     const { seasonId } = await params
     const seasonNumber = parseInt(seasonId)
 
-    // Get season-specific map and locations
+    // Get season-specific map, locations, and factions
     const activeMap = await getActiveMapForSeason(seasonNumber)
     const locations = await getAllLocationsForSeason(seasonNumber)
+    const factions = await getAllFactionsForSeason(seasonNumber)
+
+    console.log(`📍 Locations for season ${seasonNumber}:`, locations.length)
+    console.log(`🏰 Factions for season ${seasonNumber}:`, factions.length)
 
     // Generate optimized image URL with crop applied
     let optimizedMapUrl = '/images/maps/generic-map.png'
@@ -32,7 +55,7 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
                 .width(1920)
                 .quality(80)
 
-            // Apply crop using PIXEL values (not percentages)
+            // Apply crop using PIXEL values
             if (activeMap.pixelCrop) {
                 const pc = activeMap.pixelCrop
                 builder = builder.rect(pc.x, pc.y, pc.width, pc.height)
@@ -41,7 +64,6 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
             }
 
             optimizedMapUrl = builder.url()
-            console.log('Final image URL:', optimizedMapUrl)
         }
     }
 
@@ -77,6 +99,7 @@ export default async function SeasonMapPage({ params }: { params: Promise<{ seas
                 <CK3MapClient
                     mapImage={optimizedMapUrl}
                     locations={locations}
+                    factions={factions}
                 />
 
                 {/* Legend */}

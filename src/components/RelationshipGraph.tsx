@@ -7,6 +7,7 @@ interface Character {
     name: string
     type: string
     role?: string
+    imageUrl?: string // Ensure this is fetched from Sanity
     family?: { name: string }[]
     allies?: { name: string }[]
     rivals?: { name: string }[]
@@ -15,46 +16,16 @@ interface Character {
 interface RelationshipGraphProps {
     characters: Character[]
     onNodeClick?: (characterName: string) => void
-    highlightNode?: string  // ← Add this to props
-}
-
-interface GraphNode {
-    id: string
-    label: string
-    title: string
-    color: {
-        background: string
-        border: string
-        highlight: {
-            background: string
-            border: string
-        }
-    }
-    shape: string
-    size: number
-    font: {
-        color: string
-        size: number
-        face: string
-    }
-}
-
-interface GraphEdge {
-    from: string
-    to: string
-    label: string
-    color: string
-    width: number
-    dashes?: boolean
+    highlightNode?: string
 }
 
 export default function RelationshipGraph({
                                               characters,
                                               onNodeClick,
-                                              highlightNode  // ← Destructure highlightNode here
+                                              highlightNode
                                           }: RelationshipGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null)
-    const networkRef = useRef<unknown>(null)
+    const networkRef = useRef<any>(null)
     const [isMounted, setIsMounted] = useState(false)
 
     useEffect(() => {
@@ -68,163 +39,104 @@ export default function RelationshipGraph({
             const vis = await import('vis-network')
             const { Network } = vis
 
-            // Build nodes FIRST (without highlight logic)
-            const nodes: GraphNode[] = characters.map((char) => {
-                let bgColor = '#4a3510'
-                let borderColor = '#c9a227'
-
-                if (char.type === 'PC') {
-                    bgColor = '#1a3a4a'
-                    borderColor = '#60c0e0'
-                } else if (char.type === 'Ally') {
-                    bgColor = '#1a4a2a'
-                    borderColor = '#60e080'
-                } else if (char.type === 'Antagonist') {
-                    bgColor = '#4a1a1a'
-                    borderColor = '#e06060'
-                }
+            // 1. Map Nodes to CK3 Portrait Tokens
+            const nodes = characters.map((char) => {
+                let borderColor = '#c9a227' // Gold for NPCs
+                if (char.type === 'PC') borderColor = '#60c0e0' // Sky Blue for Players
+                if (char.type === 'Ally') borderColor = '#60e080' // Emerald for Allies
+                if (char.type === 'Antagonist') borderColor = '#e06060' // Blood Red for Rivals
 
                 return {
                     id: char._id,
                     label: char.name,
-                    title: `${char.name}\n${char.role || 'Adventurer'}\nType: ${char.type}`,
+                    shape: 'circularImage',
+                    image: char.imageUrl || '/images/placeholders/char-placeholder.png',
+                    size: char.type === 'PC' ? 35 : 25,
+                    borderWidth: 3,
                     color: {
-                        background: bgColor,
                         border: borderColor,
-                        highlight: {
-                            background: bgColor,
-                            border: '#f0c040',
-                        },
+                        background: '#0d0905',
+                        highlight: { border: '#fff', background: '#0d0905' }
                     },
-                    shape: 'dot',
-                    size: 20,
                     font: {
                         color: '#e8d5a3',
-                        size: 12,
+                        size: 14,
                         face: 'Cinzel, serif',
-                    },
-                }
-            })
-
-            // Build edges
-            const edges: GraphEdge[] = []
-
-            characters.forEach((char) => {
-                // Family relationships
-                if (char.family) {
-                    char.family.forEach((familyMember) => {
-                        const targetChar = characters.find((c) => c.name === familyMember.name)
-                        if (targetChar) {
-                            edges.push({
-                                from: char._id,
-                                to: targetChar._id,
-                                label: 'Family',
-                                color: '#c9a227',
-                                width: 2,
-                            })
-                        }
-                    })
-                }
-
-                // Ally relationships
-                if (char.allies) {
-                    char.allies.forEach((ally) => {
-                        const targetChar = characters.find((c) => c.name === ally.name)
-                        if (targetChar) {
-                            edges.push({
-                                from: char._id,
-                                to: targetChar._id,
-                                label: 'Ally',
-                                color: '#60c0e0',
-                                width: 2,
-                            })
-                        }
-                    })
-                }
-
-                // Rival relationships
-                if (char.rivals) {
-                    char.rivals.forEach((rival) => {
-                        const targetChar = characters.find((c) => c.name === rival.name)
-                        if (targetChar) {
-                            edges.push({
-                                from: char._id,
-                                to: targetChar._id,
-                                label: 'Rival',
-                                color: '#e06060',
-                                width: 2,
-                                dashes: true,
-                            })
-                        }
-                    })
-                }
-            })
-
-            // Create network
-            const data = {
-                nodes: nodes,
-                edges: edges,
-            }
-
-            const options = {
-                nodes: {
-                    borderWidth: 2,
-                    shadow: true,
-                },
-                edges: {
-                    smooth: true,  // ← Simplified: just boolean instead of object
-                    font: {
-                        color: '#c8a96e',
-                        size: 10,
-                        face: 'Cinzel, serif',
-                        align: 'middle',
-                    },
-                },
-                physics: {
-                    stabilization: true,
-                    barnesHut: {
-                        gravitationalConstant: -8000,
-                        centralGravity: 0.3,
-                        springLength: 95,
-                        springConstant: 0.04,
-                        damping: 0.09,
-                    },
-                },
-                interaction: {
-                    hover: true,
-                    tooltipDelay: 200,
-                    zoomView: true,
-                    dragView: true,
-                },
-                layout: {
-                    improvedLayout: true,
-                },
-                background: '#0d0905',
-            }
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            networkRef.current = new Network(containerRef.current!, data as any, options as any)
-
-            // Add click handler
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ;(networkRef.current as any).on('click', (params: { nodes: string[] }) => {
-                if (params.nodes.length > 0 && onNodeClick) {
-                    const nodeId = params.nodes[0]
-                    const character = characters.find((c) => c._id === nodeId)
-                    if (character) {
-                        onNodeClick(character.name)
+                        vadjust: 12 // Keeps the name clearly below the portrait
                     }
                 }
             })
 
-            // HIGHLIGHT NODE AFTER NETWORK IS CREATED
+            // 2. Map Relationship Edges
+            const edges: any[] = []
+            characters.forEach((char) => {
+                const buildRelation = (list: any[] | undefined, label: string, color: string, dashed: boolean) => {
+                    list?.forEach(target => {
+                        const targetChar = characters.find(c => c.name === target.name)
+                        if (targetChar) {
+                            edges.push({
+                                from: char._id,
+                                to: targetChar._id,
+                                label: label,
+                                color: { color, opacity: 0.5 },
+                                width: 2,
+                                dashes: dashed,
+                                smooth: { type: 'curvedCW', roundness: 0.2 },
+                                font: { strokeWidth: 0, color: '#c8a96e', size: 10, face: 'Cinzel' }
+                            })
+                        }
+                    })
+                }
+
+                buildRelation(char.family, 'Blood', '#c9a227', false)
+                buildRelation(char.allies, 'Ally', '#60e080', false)
+                buildRelation(char.rivals, 'Rival', '#e06060', true)
+            })
+
+            // 3. Network Configuration (CK3 Aesthetic)
+            const options = {
+                physics: {
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -100,
+                        centralGravity: 0.005,
+                        springLength: 180,
+                        springConstant: 0.08
+                    },
+                    stabilization: { iterations: 100 }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 300,
+                    zoomView: true,
+                    dragView: true,
+                },
+                edges: {
+                    arrows: { to: { enabled: false } }, // Symmetrical relationships
+                    selectionWidth: 3
+                },
+                nodes: {
+                    shadow: { enabled: true, color: 'rgba(0,0,0,0.7)', size: 10 }
+                }
+            }
+
+            const data = { nodes, edges }
+            networkRef.current = new Network(containerRef.current!, data, options as any)
+
+            // Click Handler
+            networkRef.current.on('click', (params: any) => {
+                if (params.nodes.length > 0 && onNodeClick) {
+                    const char = characters.find(c => c._id === params.nodes[0])
+                    if (char) onNodeClick(char.name)
+                }
+            })
+
+            // Initial Focus for HighlightNode
             if (highlightNode) {
-                const nodeToHighlight = nodes.find((n) => n.label === highlightNode)
-                if (nodeToHighlight && networkRef.current) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const network = networkRef.current as any
-                    network.selectNodes([nodeToHighlight.id])
-                    network.focus(nodeToHighlight.id, { scale: 1.5, animation: true })
+                const node = nodes.find(n => n.label === highlightNode)
+                if (node) {
+                    networkRef.current.selectNodes([node.id])
+                    networkRef.current.focus(node.id, { scale: 1.2, animation: true })
                 }
             }
         }
@@ -233,56 +145,48 @@ export default function RelationshipGraph({
 
         return () => {
             if (networkRef.current) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ;(networkRef.current as any).destroy()
+                networkRef.current.destroy()
                 networkRef.current = null
             }
         }
-    }, [characters, isMounted, onNodeClick, highlightNode]) // ← Add highlightNode to dependencies
-
-    if (!isMounted) {
-        return (
-            <div className="h-[600px] bg-gray-900 rounded-lg flex items-center justify-center">
-                <p className="text-gray-400">Loading relationship graph...</p>
-            </div>
-        )
-    }
-
-    if (characters.length === 0) {
-        return (
-            <div className="h-[600px] bg-gray-900 rounded-lg flex items-center justify-center">
-                <p className="text-gray-400">No character relationships found.</p>
-            </div>
-        )
-    }
+    }, [characters, isMounted, onNodeClick, highlightNode])
 
     return (
-        <div className="w-full bg-black rounded-lg overflow-hidden border border-amber-800/30">
+        <div className="relative w-full bg-[#050505] rounded-xl border-2 border-amber-900/30 overflow-hidden shadow-2xl">
+            {/* Cinematic Background Elements */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('/images/textures/parchment.png')] mix-blend-overlay" />
+            <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />
+
             <div
                 ref={containerRef}
-                style={{ height: '600px', width: '100%' }}
-                className="bg-gradient-to-b from-gray-900 to-black"
+                className="w-full h-[700px] cursor-grab active:cursor-grabbing"
             />
-            <div className="p-3 border-t border-amber-800/30 text-center">
-                <div className="flex justify-center gap-6 text-xs flex-wrap">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#1a3a4a] border border-[#60c0e0]" />
-                        <span className="text-gray-400">Player Character</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#1a4a2a] border border-[#60e080]" />
-                        <span className="text-gray-400">Ally</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#4a1a1a] border border-[#e06060]" />
-                        <span className="text-gray-400">Antagonist</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#4a3510] border border-[#c9a227]" />
-                        <span className="text-gray-400">NPC</span>
+
+            {/* CK3-Style Legend UI */}
+            <div className="absolute bottom-6 left-6 flex flex-col gap-3 bg-black/80 backdrop-blur-md p-4 border border-amber-800/40 rounded-lg shadow-xl font-serif">
+                <h4 className="text-amber-500 text-[10px] uppercase tracking-[0.2em] font-bold border-b border-amber-900/50 pb-2 mb-1">
+                    Relationship Ledger
+                </h4>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                    <LegendItem color="#60c0e0" label="Vanguard (PC)" />
+                    <LegendItem color="#60e080" label="Ally" />
+                    <LegendItem color="#e06060" label="Antagonist" />
+                    <LegendItem color="#c9a227" label="Neutral NPC" />
+                    <div className="col-span-2 h-px bg-amber-900/30 my-1" />
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400 italic">
+                        <div className="w-6 h-0 border-t border-dashed border-[#e06060]" /> Rivalry
                     </div>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function LegendItem({ color, label }: { color: string, label: string }) {
+    return (
+        <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full border shadow-sm" style={{ backgroundColor: color, borderColor: '#fff' }} />
+            <span className="text-[10px] text-amber-100/70 uppercase tracking-widest font-bold">{label}</span>
         </div>
     )
 }
