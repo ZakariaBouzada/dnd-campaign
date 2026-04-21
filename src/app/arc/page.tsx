@@ -1,4 +1,4 @@
-import { getArc, getAllCharacters, getAllSessions } from '@/lib/sanityQueries'
+import { getArc, getAllCharacters, getAllSessions, getPublishedGMNotes } from '@/lib/sanityQueries'
 import { urlFor } from '@/lib/sanity'
 import Link from 'next/link'
 import CK3MapClient from '@/components/CK3MapClient'
@@ -11,10 +11,12 @@ export default async function ChronicleArcPage() {
     // 1. Fetch the master Arc data and other global lists
     const arc = await getArc()
     const stat = await getCampaignStats()
+    const publishedNotes = await getPublishedGMNotes()
 
     const characters = await getAllCharacters()
     const sessions = await getAllSessions()
-
+    // Process a "Preview" version of the timeline (latest 3 across all seasons)
+    const timelinePreview = sessions.slice(0, 3)
     if (!arc) {
         console.log("❌ No active Arc found in Sanity")
         return notFound()
@@ -64,9 +66,14 @@ export default async function ChronicleArcPage() {
         totalSeasons: stat.totalSeasons
     }
 
-    console.log("📊 Stats calculated:", stats)
-    console.log("Total Featured in Sanity:", arc.featuredCharacters?.length);
-    console.log("Featured Names:", arc.featuredCharacters?.map(c => c.name));
+    const allChronicles = [
+        ...sessions.map(s => ({ ...s, type: 'session' })),
+        ...publishedNotes.map((n: any) => ({ ...n, type: 'note' }))
+    ].sort((a, b) => {
+        const dateA = new Date(a.date || a._updatedAt).getTime()
+        const dateB = new Date(b.date || b._updatedAt).getTime()
+        return dateB - dateA
+    }).slice(0, 5)
 
     return (
         <main className="min-h-screen bg-black">
@@ -192,27 +199,118 @@ export default async function ChronicleArcPage() {
                 </section>
             )}
 
-            {/* Timeline of All Sessions */}
-            <section className="py-16 px-4 max-w-4xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-serif text-amber-400 text-center mb-10">The Complete Chronicle</h2>
-                <div className="relative pl-8 border-l border-amber-800/30 space-y-8">
-                    {sessions.length === 0 ? (
-                        <p className="text-center text-gray-500 py-8">No sessions recorded yet.</p>
-                    ) : (
-                        sessions.map((session: any) => (
-                            <div key={session._id} className="relative group">
-                                <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-black border border-amber-600 flex items-center justify-center text-[10px] text-amber-500">
-                                    {session.sessionNumber}
+            {/* ═══════════════════════════════════════════
+    FACTIONS & TIMELINE GRID
+═══════════════════════════════════════════ */}
+            <section className="py-24 px-4 max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+
+                    {/* FACTION PREVIEW (Left Column) */}
+                    <div className="lg:col-span-1">
+                        <div className="flex items-center gap-4 mb-8">
+                            <h2 className="text-xl font-serif text-amber-400 tracking-wide whitespace-nowrap">
+                                Great Powers
+                            </h2>
+                            <div className="flex-1 h-px bg-amber-900/40"/>
+                        </div>
+
+                        <div className="space-y-4">
+                            {mapFactions && mapFactions.length > 0 ? mapFactions.slice(0, 6).map((faction: any) => (
+                                <div
+                                    key={faction._id}
+                                    className="relative block p-4 bg-zinc-900/30 border border-amber-900/20 rounded-lg hover:border-amber-500/50 hover:bg-zinc-900/60 transition-all group overflow-hidden"
+                                >
+                                    {/* Faction Color Accent */}
+                                    <div
+                                        className="absolute left-0 top-0 bottom-0 w-1 opacity-70 group-hover:opacity-100 transition-opacity"
+                                        style={{ backgroundColor: faction.color || '#d97706' }}
+                                    />
+
+                                    <div className="flex items-center gap-4">
+                            <span className="text-3xl group-hover:scale-110 transition-transform duration-500">
+                                {faction.symbol || '⚜️'}
+                            </span>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-amber-500 font-serif text-sm truncate">
+                                                {faction.name}
+                                            </h3>
+                                            <p className="text-[10px] text-gray-500 italic truncate tracking-wide">
+                                                {faction.tagline || 'No recorded motto'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="text-xs text-amber-600/80">Season {session.season?.seasonNumber}</span>
-                                    <span className="text-xs text-gray-600">{session.date ? new Date(session.date).toLocaleDateString() : 'Date unknown'}</span>
-                                </div>
-                                <h3 className="text-lg md:text-xl font-serif text-amber-400 group-hover:text-amber-300">{session.title}</h3>
-                                <p className="text-gray-400 text-sm italic">"{session.summary}"</p>
-                            </div>
-                        ))
-                    )}
+                            )) : (
+                                <p className="text-xs text-gray-600 italic">No factional records found.</p>
+                            )}
+                        </div>
+                    </div>
+                    {/* RECENT CHRONICLES (Right Column) */}
+                    <div className="lg:col-span-2">
+                        <div className="flex items-center gap-4 mb-8">
+                            <h2 className="text-xl font-serif text-amber-400 tracking-wide whitespace-nowrap">
+                                Recent Chronicles
+                            </h2>
+                            <div className="flex-1 h-px bg-amber-900/40"/>
+                        </div>
+
+                        <div className="relative pl-8 border-l border-amber-900/30 space-y-10">
+                            {allChronicles.length > 0 ? allChronicles.map((item: any) => {
+                                const isNote = item.type === 'note';
+
+                                return (
+                                    <div key={item._id} className="block relative group">
+                                        {/* Icon Indicator */}
+                                        <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-black border border-amber-600 flex items-center justify-center text-[10px] text-amber-500 group-hover:shadow-[0_0_15px_rgba(217,119,6,0.4)] transition-all">
+                                            {isNote ? '📜' : item.sessionNumber}
+                                        </div>
+
+                                        <div className="flex items-center gap-3 mb-1">
+                        <span className={`text-[9px] px-2 py-0.5 border rounded uppercase tracking-tighter ${
+                            isNote ? 'bg-emerald-900/20 border-emerald-800/30 text-emerald-500' : 'bg-amber-900/20 border-amber-800/30 text-amber-500'
+                        }`}>
+                            {isNote ? item.category : `Season ${item.season?.seasonNumber}`}
+                        </span>
+                                            <span className="text-[10px] text-gray-600 uppercase">
+                            {new Date(item.date || item._updatedAt).toLocaleDateString()}
+                        </span>
+                                        </div>
+
+                                        {isNote ? (
+                                            /* GM NOTE LAYOUT */
+                                            <Link href={`/arc/note/${item._id}`} className="cursor-pointer block">
+                                                <h3 className="text-emerald-400 font-serif text-lg group-hover:text-emerald-200 transition-colors">
+                                                    {item.title}
+                                                </h3>
+                                                <p className="text-gray-400 text-sm line-clamp-2 italic font-light mt-1">
+                                                    {item.tags?.length > 0 ? `Tags: ${item.tags.join(', ')}` : "A secret entry from the GM's desk..."}
+                                                </p>
+                                                {/* We will add the "Open Scroll" logic here next */}
+                                                <div className="mt-2 text-[10px] text-emerald-600 uppercase tracking-widest opacity-60 group-hover:opacity-100">
+                                                    Open Secret Scroll ⤙
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            /* STANDARD SESSION LAYOUT */
+                                            <Link href={`/season/${item.season?.seasonNumber}/timeline`}>
+                                                <h3 className="text-amber-400 font-serif text-lg group-hover:text-amber-200 transition-colors">
+                                                    {item.title}
+                                                </h3>
+                                                <p className="text-gray-400 text-sm line-clamp-2 italic font-light mt-1">
+                                                    "{item.summary}"
+                                                </p>
+                                                <div className="mt-2 text-[10px] text-amber-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    Read Entry →
+                                                </div>
+                                            </Link>
+                                        )}
+                                    </div>
+                                );
+                            }) : (
+                                <p className="text-xs text-gray-600 italic">The scrolls are currently empty.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </section>
 

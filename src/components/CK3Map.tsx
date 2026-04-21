@@ -236,8 +236,24 @@ export default function CK3Map({
                                                     ? `${faction.color}15` // Brighter (20% opacity)
                                                     : `${faction.color}05` // Default (approx 8% opacity)
                                                 }
+                                                style={{
+                                                    mixBlendMode: 'multiply',
+                                                    transition: 'all 0.5s ease-in-out',
+
+                                                    // INDEPENDENT OPACITY CONTROLS:
+                                                    // Fill stays very faint even on hover
+                                                    fillOpacity: hoveredFaction === faction.name ? 0.2 : 0,
+
+                                                    // Border becomes much stronger on hover
+                                                    strokeOpacity: hoveredFaction === faction.name ? 0.8 : 0.2,
+
+                                                    // Optional: Add the subtle glow only to the border
+                                                    filter: hoveredFaction === faction.name
+                                                        ? `drop-shadow(0 0 1px ${faction.color}88)`
+                                                        : 'none'
+                                                }}
                                                 stroke={faction.color || '#c9a227'}
-                                                strokeWidth={(hoveredFaction === faction.name ? 0.3 : 0.1) / zoomScale}// Thinned for elegance
+                                                strokeWidth={(hoveredFaction === faction.name ? 0.4 : 0.1) / zoomScale}// Thinned for elegance
                                                 className="transition-all duration-500 cursor-pointer pointer-events-auto hover:brightness-125 hover:stroke-[0.1px]"
                                                 onMouseEnter={() => setHoveredFaction(faction.name)}
                                                 onMouseLeave={() => setHoveredFaction(null)}

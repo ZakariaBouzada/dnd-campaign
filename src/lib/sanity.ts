@@ -8,6 +8,7 @@ export const client = createClient({
     useCdn: false,
     perspective: 'published',
     ignoreBrowserTokenWarning: true,
+    token: typeof window === 'undefined' ? process.env.NEXT_PUBLIC_SANITY_API_WRITE_TOKEN : undefined,
 })
 
 // Image URL builder for Sanity images

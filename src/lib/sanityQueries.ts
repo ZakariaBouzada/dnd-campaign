@@ -114,16 +114,68 @@ export async function getAllCharacters() {
     const query = `*[_type == "character"] | order(name asc) {
         _id,
         name,
-        role,
+        slug,
+        "imageUrl": portrait.asset->url,
         type,
+        role,
         race,
+        subrace,
         class,
-        hp,
-        ac,
-        traits,
+        subclass,
+        background,
+        alignment,
+        status,
         backstory,
-        location-> { name },
-        seasons[]-> { seasonNumber, title }
+        personalityTraits,
+        ideals,
+        bonds,
+        flaws,
+        deity,
+        religion,
+        age,
+        height,
+        weight,
+        eyeColor,
+        hairColor,
+        distinguishingMarks,
+        
+        // 1. Fetch Current Location + its Coordinates for the Map Fly-In
+        currentLocation-> {
+            "_ref": _id,
+            name,
+            coordinates { x, y }
+        },
+        
+        // 2. Fetch Home Location
+        homeLocation-> {
+            "_ref": _id,
+            name,
+            coordinates {x,y}
+        },
+
+        // 3. Expanded Relationships Logic
+        // This maps the target reference to the actual character name and ID
+        relationships[] {
+            relationType,
+            "target": target-> {
+                _id,
+                name,
+                "imageUrl": portrait.asset->url
+            }
+        },
+
+        // 4. Factions
+        factions[]-> {
+            _id,
+            name,
+            color
+        },
+
+        // 5. Seasons
+        seasons[]-> { 
+            seasonNumber, 
+            title 
+        }
     }`
     return await client.fetch(query)
 }
@@ -282,4 +334,32 @@ export async function getCampaignStats() {
         "totalSessions": count(*[_type == "session"])
     }`
     return await client.fetch(query)
+}
+
+export async function getPublishedGMNotes() {
+    const query = `*[_type == "gmNote" && isPublished == true] | order(_updatedAt desc) {
+        _id,
+        title,
+        category,
+        content,
+        tags,
+        _updatedAt,
+        _createdAt
+    }`
+
+    const notes = await client.fetch(query)
+    console.log(`📜 Fetched ${notes.length} published GM notes`)
+    return notes
+}
+export async function getGMNoteById(id: string) {
+    const query = `*[_type == "gmNote" && _id == $id][0] {
+        _id,
+        title,
+        category,
+        content,
+        tags,
+        _updatedAt,
+        _createdAt
+    }`
+    return await client.fetch(query, { id: id })
 }

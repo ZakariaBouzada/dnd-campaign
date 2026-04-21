@@ -1,30 +1,25 @@
 import { client } from '@/lib/sanity'
 import RelationshipGraphWrapper from '@/components/RelationshipGraphWrapper'
 import BackNavigation from '@/components/BackNavigation'
+import { getAllCharacters } from '@/lib/sanityQueries'
+import CharactersClient from '@/components/CharactersClient'
 
+// 1. Updated Interface to match exactly with Graph and Wrapper
 interface Character {
     _id: string
     name: string
     type: string
     role?: string
-    imageUrl?: string // Added for the new CK3 portraits
-    family?: { name: string }[]
-    allies?: { name: string }[]
-    rivals?: { name: string }[]
-}
-
-async function getCharacters(): Promise<Character[]> {
-    const query = `*[_type == "character"] {
-        _id,
-        name,
-        type,
-        role,
-        "imageUrl": portrait.asset->url, // Fetch the actual image URL
-        family[]-> { name },
-        allies[]-> { name },
-        rivals[]-> { name }
-    }`
-    return await client.fetch(query)
+    imageUrl?: string
+    currentLocation?: { _ref: string }
+    relationships?: Array<{
+        // Match the specific literal types here
+        relationType: 'parent' | 'child' | 'sibling' | 'spouse' | 'ally' | 'rival' | 'mentor';
+        target: {
+            _id: string;
+            name: string;
+        };
+    }>
 }
 
 interface PageProps {
@@ -33,14 +28,21 @@ interface PageProps {
 
 export default async function RelationshipsPage({ searchParams }: PageProps) {
     const { character: highlightCharacter } = await searchParams
-    const characters = await getCharacters()
+    const characters = await getAllCharacters()
+    const highlightName = highlightCharacter ? decodeURIComponent(highlightCharacter) : undefined;
+    const highlightedExists = characters.some(c => c.name === highlightName);
+
+    const getRelationCount = (type: string) => {
+        return characters.filter(c =>
+            c.relationships?.some(r => r.relationType === type)
+        ).length;
+    }
 
     return (
         <main className="min-h-screen bg-[#050505] p-6 md:p-12">
             <div className="max-w-7xl mx-auto">
                 <BackNavigation />
 
-                {/* Header: Royal Archive Style */}
                 <div className="text-center mb-12">
                     <div className="text-amber-600 text-[10px] tracking-[0.5em] uppercase mb-2">Social Fabric of the Realm</div>
                     <h1 className="text-5xl md:text-6xl font-serif text-amber-400 mb-4 drop-shadow-2xl">
@@ -61,37 +63,21 @@ export default async function RelationshipsPage({ searchParams }: PageProps) {
                     )}
                 </div>
 
-                {/* Main Graph Area */}
                 <div className="relative group">
                     <RelationshipGraphWrapper
                         characters={characters}
-                        highlightCharacter={highlightCharacter ? decodeURIComponent(highlightCharacter) : undefined}
-                    />
+                        highlightCharacter={highlightedExists ? highlightName : undefined}                     />
 
-                    {/* Floating Controls Hint */}
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm border border-amber-900/40 px-3 py-2 rounded text-[10px] text-amber-700 uppercase tracking-tighter">
+                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm border border-amber-900/40 px-3 py-2 rounded text-[10px] text-amber-700 uppercase tracking-tighter pointer-events-none">
                         Scroll to Zoom • Drag to Pan
                     </div>
                 </div>
 
-                {/* Statistics Ledger: CK3 Style Cards */}
                 <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard
-                        value={characters.length}
-                        label="Recorded Souls"
-                    />
-                    <StatCard
-                        value={characters.filter((c) => c.type === 'PC').length}
-                        label="The Vanguard"
-                    />
-                    <StatCard
-                        value={characters.filter((c) => c.allies && c.allies.length > 0).length}
-                        label="Allied Bonds"
-                    />
-                    <StatCard
-                        value={characters.filter((c) => c.rivals && c.rivals.length > 0).length}
-                        label="Active Feuds"
-                    />
+                    <StatCard value={characters.length} label="Recorded Souls" />
+                    <StatCard value={characters.filter((c) => c.type === 'PC').length} label="The Vanguard" />
+                    <StatCard value={getRelationCount('ally')} label="Allied Bonds" />
+                    <StatCard value={getRelationCount('rival')} label="Active Feuds" />
                 </div>
 
                 <footer className="mt-16 text-center opacity-40">

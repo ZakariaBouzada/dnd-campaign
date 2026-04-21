@@ -41,8 +41,8 @@ async function getAllArcCharacters(): Promise<SanityCharacter[]> {
         eyeColor,
         hairColor,
         distinguishingMarks,
-        currentLocation-> { name },
-        homeLocation-> { name },
+        currentLocation-> { name , "_ref": _id},
+        homeLocation-> { name, "_ref": _id },
         seasons[]-> {
             _id,
             seasonNumber,

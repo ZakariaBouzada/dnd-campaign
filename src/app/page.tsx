@@ -110,7 +110,7 @@ export default async function HomePage() {
 
                 {/* Subtitle */}
                 <p className="text-amber-600/90 text-base md:text-lg tracking-widest max-w-2xl font-light italic mb-12">
-                    A campaign of conquest, betrayal &amp; glory<br className="hidden md:block" /> in the fractured kingdom of Valdris
+                    A campaign of conquest, betrayal &amp; glory<br className="hidden md:block" /> in the fractured kingdom of Westerex
                 </p>
 
                 {/* Bottom ornamental divider */}
@@ -186,11 +186,6 @@ export default async function HomePage() {
                     </div>
                 )}
 
-                {/* Scroll nudge */}
-                <div className="flex flex-col items-center gap-2 text-amber-800/60 mt-4">
-                    <span className="text-xs tracking-widest uppercase">Scroll</span>
-                    <div className="w-px h-10 bg-gradient-to-b from-amber-700/50 to-transparent animate-pulse" />
-                </div>
             </div>
 
 

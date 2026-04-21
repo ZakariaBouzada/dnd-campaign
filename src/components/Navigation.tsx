@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
     { name: 'Map', path: '/map' },
     { name: 'Relationships', path: '/relationships' },
     { name: 'About', path: '/about' },
+    { name: 'GM Workshop', path: '/gm-workshop' }
 ]
 
 export default function Navigation() {

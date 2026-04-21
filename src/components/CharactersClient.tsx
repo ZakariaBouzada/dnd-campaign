@@ -5,6 +5,7 @@ import { SanityCharacter } from '@/types/sanity'
 import CharacterCard from './CharacterCard'
 import CharacterModal from './CharacterModal'
 
+
 interface CharactersClientProps {
     characters: SanityCharacter[]
 }
