@@ -28,13 +28,13 @@ interface PageProps {
 
 export default async function RelationshipsPage({ searchParams }: PageProps) {
     const { character: highlightCharacter } = await searchParams
-    const characters = await getAllCharacters()
+    const characters = await getAllCharacters() as Character[]
     const highlightName = highlightCharacter ? decodeURIComponent(highlightCharacter) : undefined;
-    const highlightedExists = characters.some(c => c.name === highlightName);
+    const highlightedExists = characters.some((c: any) => c.name === highlightName);
 
     const getRelationCount = (type: string) => {
         return characters.filter(c =>
-            c.relationships?.some(r => r.relationType === type)
+            c.relationships?.some((r: any) => r.relationType === type)
         ).length;
     }
 
@@ -75,7 +75,7 @@ export default async function RelationshipsPage({ searchParams }: PageProps) {
 
                 <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <StatCard value={characters.length} label="Recorded Souls" />
-                    <StatCard value={characters.filter((c) => c.type === 'PC').length} label="The Vanguard" />
+                    <StatCard value={characters.filter((c: any) => c.type === 'PC').length} label="The Vanguard" />
                     <StatCard value={getRelationCount('ally')} label="Allied Bonds" />
                     <StatCard value={getRelationCount('rival')} label="Active Feuds" />
                 </div>
