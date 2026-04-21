@@ -66,10 +66,10 @@ export default async function ChronicleArcPage() {
         totalSeasons: stat.totalSeasons
     }
 
-    const allChronicles = [
-        ...sessions.map(s => ({ ...s, type: 'session' })),
+    const allChronicles = ([
+        ...sessions.map((s: any) => ({ ...s, type: 'session' })),
         ...publishedNotes.map((n: any) => ({ ...n, type: 'note' }))
-    ].sort((a, b) => {
+    ] as any[]).sort((a, b) => {
         const dateA = new Date(a.date || a._updatedAt).getTime()
         const dateB = new Date(b.date || b._updatedAt).getTime()
         return dateB - dateA
