@@ -53,11 +53,11 @@ export default async function RelationshipsPage({ searchParams }: PageProps) {
                     </p>
                     <div className="w-48 h-px bg-gradient-to-r from-transparent via-amber-800/60 to-transparent mx-auto mt-6" />
 
-                    {highlightCharacter && (
+                    {highlightedExists && highlightName && (
                         <div className="mt-6 inline-flex items-center gap-2 bg-amber-950/40 border border-amber-600/30 rounded-full px-5 py-1.5 shadow-xl">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                             <span className="text-xs font-serif italic text-amber-200 uppercase tracking-widest">
-                                Tracing: {decodeURIComponent(highlightCharacter)}
+                            Tracing: {highlightName}
                             </span>
                         </div>
                     )}

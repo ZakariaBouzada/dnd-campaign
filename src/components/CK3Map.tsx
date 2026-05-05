@@ -54,6 +54,8 @@ export default function CK3Map({
     const [zoomScale, setZoomScale] = useState(1)
     const [maskUrl, setMaskUrl] = useState<string | null>(null)
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
+    const transformWrapperRef = useRef<any>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
     const [isReady, setIsReady] = useState(false);
 
     // Data Filtering
@@ -178,6 +180,7 @@ export default function CK3Map({
             <div
                 className="absolute inset-0 z-30 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,4px_100%]"/>
             <TransformWrapper
+                ref={transformWrapperRef}
                 initialScale={1}
                 minScale={0.5}
                 maxScale={4}
@@ -374,6 +377,7 @@ export default function CK3Map({
                                 {validLocations.map((location) => (
                                     <div
                                         key={location._id}
+                                        id={`marker-${location._id}`}
                                         className="absolute cursor-pointer group z-30"
                                         style={{
                                             left: `${location.coordinates!.x}%`,
@@ -384,24 +388,75 @@ export default function CK3Map({
                                         onMouseLeave={() => setHoveredLocation(null)}
                                         onClick={() => {
                                             setSelectedLocation(location);
-                                            setSelectedFaction(null);
-                                            onLocationClick?.(location);
+                                            if (transformWrapperRef.current && location.coordinates) {
+                                                const { instance } = transformWrapperRef.current;
+                                                const { x, y } = location.coordinates;
+
+                                                // 1. Get the current size of the image inside the zoom container
+                                                const contentWidth = instance.contentComponent.offsetWidth;
+                                                const contentHeight = instance.contentComponent.offsetHeight;
+
+                                                // 2. Get the size of the visible window (the container)
+                                                const wrapperWidth = instance.wrapperComponent.offsetWidth;
+                                                const wrapperHeight = instance.wrapperComponent.offsetHeight;
+
+                                                // 3. Define your target zoom level
+                                                const targetScale = 2.5;
+
+                                                // 4. Calculate the pixel position on the map
+                                                const pixelX = (x / 100) * contentWidth;
+                                                const pixelY = (y / 100) * contentHeight;
+
+                                                // 5. The Math: (Center of Screen) - (Target Point * Scale)
+                                                const newX = (wrapperWidth / 2) - (pixelX * targetScale);
+                                                const newY = (wrapperHeight / 2) - (pixelY * targetScale);
+
+                                                transformWrapperRef.current.setTransform(
+                                                    newX,
+                                                    newY,
+                                                    targetScale,
+                                                    600, // Animation speed
+                                                    "easeOut"
+                                                );
+                                            }
                                         }}
                                     >
+                                        {/* THE CASTLE ICON */}
+                                        <div className="relative transition-transform duration-300 group-hover:scale-110">
+                                            <img
+                                                src="/images/textures/castle1.png" // Ensure you have a transparent castle PNG here
+                                                alt="castle"
+                                                style={{
+                                                    width: `${Math.max(20, 40 / zoomScale)}px`,
+                                                    height: 'auto',
+                                                    /*
+                                                       IMPORTANT: Remove 'mix-blend-mode: multiply' if your PNG is now transparent.
+                                                       Multiply will make the castle look muddy if the background is gone.
+                                                    */
+                                                    filter: hoveredLocation === location.name
+                                                        ? `brightness(1.3) sepia(0.2) drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))` // Strong gold glow on hover
+                                                        : `brightness(1) sepia(0.4) drop-shadow(0 0 3px rgba(255, 255, 255, 0.8))`,   // Subtle amber halo idle
+                                                }}
+                                                className="transition-all duration-300"
+                                            />
+                                        </div>
+
+                                        {/* INKARNATE HOVER LABEL */}
                                         <div
-                                            className="rounded-full shadow-md transition-transform group-hover:scale-150"
-                                            style={{
-                                                ...markerStyles,
-                                                backgroundColor: getMarkerColor(location.type),
-                                                border: zoomScale < 4 ? `${markerStyles.borderWidth} solid #fff` : 'none'
-                                            }}
-                                        />
-                                        {zoomScale > 0.8 && (
-                                            <div
-                                                className="absolute left-5 top-1/2 -translate-y-1/2 whitespace-nowrap bg-black/90 text-amber-400 text-xs px-3 py-1 rounded-r-md opacity-0 group-hover:opacity-100 transition-opacity border-l-2 border-amber-500 shadow-lg pointer-events-none">
-                                                {location.name}
+                                            className={`
+                                                        absolute left-1/2 -translate-x-1/2 top-full mt-1
+                                                        whitespace-nowrap pointer-events-none transition-all duration-200
+                                                        ${hoveredLocation === location.name ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
+                                                    `}
+                                        >
+                                            <div className="relative px-3 py-1 bg-black/60 backdrop-blur-md border border-amber-900/40 rounded shadow-2xl">
+                                                {/* Decorative sub-line under the name */}
+                                                <div className="text-amber-200 text-[10px] font-serif uppercase tracking-[0.2em] leading-tight">
+                                                    {location.name}
+                                                </div>
+                                                <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-amber-600/50 to-transparent mt-0.5" />
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>

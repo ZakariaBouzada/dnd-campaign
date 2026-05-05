@@ -34,7 +34,7 @@ export default function RelationshipGraph({
         setIsMounted(true)
     }, [])
     const edgesDataSetRef = useRef<any>(null)
-    let clickTimeout: NodeJS.Timeout | null = null;
+    const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const [hiddenTypes, setHiddenTypes] = useState<string[]>([]);
 
     const toggleType = (type: string) => {
@@ -42,6 +42,11 @@ export default function RelationshipGraph({
             prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
         );
     };
+    useEffect(() => {
+        if (characters.length > 0) {
+            debugFamilyTree(characters);
+        }
+    }, [characters]);
 
 
     function getConnectedIds(characterId: string) {
@@ -64,9 +69,43 @@ export default function RelationshipGraph({
         return connectedIds;
     }
 
+    // Add this debug function temporarily to see your tree structure
+    function debugFamilyTree(characters: Character[]) {
+        // Find all characters with no parents
+        const hasParent = new Set<string>()
+        characters.forEach(char => {
+            char.relationships?.forEach(rel => {
+                if (rel.relationType === 'parent') {
+                    hasParent.add(char._id)
+                }
+                if (rel.relationType === 'child') {
+                    const targetId = rel.target?._id || rel.target?._ref
+                    if (targetId) hasParent.add(targetId)
+                }
+            })
+        })
+
+        const roots = characters.filter(c => !hasParent.has(c._id))
+        console.log('Root characters (no parents):', roots.map(r => r.name))
+
+        if (roots.length !== 1) {
+            console.warn(`⚠️ Found ${roots.length} roots! Family tree will be broken.`)
+        }
+
+        // Check for orphans (no relationships at all)
+        const orphans = characters.filter(c => !c.relationships?.length)
+        if (orphans.length > 0) {
+            console.log('Orphans (no relationships):', orphans.map(o => o.name))
+        }
+    }
+
+    const onNodeClickRef = useRef(onNodeClick);
+    useEffect(() => {
+        onNodeClickRef.current = onNodeClick;
+    }, [onNodeClick]);
+
     useEffect(() => {
         if (!isMounted || !containerRef.current || characters.length === 0) return
-
 
         const initNetwork = async () => {
             const [visNetwork, visData] = await Promise.all([
@@ -77,62 +116,141 @@ export default function RelationshipGraph({
             const { Network } = visNetwork;
             const { DataSet } = visData;
 
-            // 1. Identify spouses & Build Parent/Child Maps
+            // ========== 1. BUILD MAPS (Sanity-Aligned) ==========
             const spouses = new Map<string, string[]>()
-            const parentMap = new Map<string, string[]>()
             const childMap = new Map<string, string[]>()
+            const hasParentSet = new Set<string>()
 
             characters.forEach(char => {
                 char.relationships?.forEach(rel => {
                     const targetId = rel.target?._id || rel.target?._ref
                     if (!targetId) return
 
+                    // 1. Handle Spouses (Unchanged)
                     if (rel.relationType === 'spouse') {
                         const coupleKey = [char._id, targetId].sort().join('-')
                         if (!spouses.has(coupleKey)) spouses.set(coupleKey, [char._id, targetId])
                     }
+
+                    // 2. Handle Parent/Child Flow
+                    let pId: string | undefined
+                    let cId: string | undefined
+
                     if (rel.relationType === 'parent') {
-                        if (!parentMap.has(targetId)) parentMap.set(targetId, [])
-                        parentMap.get(targetId)!.push(char._id)
-                        if (!childMap.has(char._id)) childMap.set(char._id, [])
-                        childMap.get(char._id)!.push(targetId)
+                        // "Char" is the Parent OF "Target"
+                        pId = char._id
+                        cId = targetId
+                    } else if (rel.relationType === 'child') {
+                        // "Char" is the Child OF "Target"
+                        pId = targetId
+                        cId = char._id
                     }
+
+                    if (pId && cId) {
+                        // Map the connection
+                        if (!childMap.has(pId)) childMap.set(pId, [])
+                        if (!childMap.get(pId)!.includes(cId)) childMap.get(pId)!.push(cId)
+
+                        // Mark cId as a child so they aren't treated as a root
+                        hasParentSet.add(cId)
+                    }
+                })
+            })
+// Debug: Log childMap
+            console.log('childMap (parent -> children):', Array.from(childMap.entries()).map(([parentId, children]) => ({
+                parent: characters.find(c => c._id === parentId)?.name,
+                children: children.map(childId => characters.find(c => c._id === childId)?.name)
+            })))
+
+            // ========== 2. FIND CHARACTERS WITH PARENTS ==========
+
+            characters.forEach(char => {
+                char.relationships?.forEach(rel => {
+                    const targetId = rel.target?._id || rel.target?._ref
+                    if (!targetId) return
+
+                    // A character has a parent if:
+                    // 1. They are the SOURCE of a 'child' relationship
                     if (rel.relationType === 'child') {
-                        if (!parentMap.has(char._id)) parentMap.set(char._id, [])
-                        parentMap.get(char._id)!.push(targetId)
-                        if (!childMap.has(targetId)) childMap.set(targetId, [])
-                        childMap.get(targetId)!.push(char._id)
+                        hasParentSet.add(char._id)
+                    }
+                    // 2. They are the TARGET of a 'parent' relationship
+                    if (rel.relationType === 'parent') {
+                        hasParentSet.add(targetId)  // ← target is the child!
                     }
                 })
             })
 
-            // 2. Generation Logic (BFS)
-            const hasParent = new Set<string>()
-            childMap.forEach((parents, child) => parents.forEach(() => hasParent.add(child)))
-            let rootId = characters.find(char => !hasParent.has(char._id))?._id || characters[0]._id
+            console.log('Characters with parents (children):', Array.from(hasParentSet).map(id =>
+                characters.find(c => c._id === id)?.name
+            ))
 
-            const levels = new Map<string, number>()
-            levels.set(rootId, 0)
-            const queue = [rootId]
-            while (queue.length > 0) {
-                const currentId = queue.shift()!
-                const currentLevel = levels.get(currentId) || 0
-                const children = parentMap.get(currentId) || []
-                children.forEach(id => {
-                    if (!levels.has(id)) { levels.set(id, currentLevel + 1); queue.push(id); }
-                })
-            }
-
-            // Sync Spouse Levels
-            spouses.forEach(couple => {
-                const l1 = levels.get(couple[0]), l2 = levels.get(couple[1])
-                if (l1 !== undefined || l2 !== undefined) {
-                    const target = Math.min(l1 ?? 99, l2 ?? 99)
-                    levels.set(couple[0], target); levels.set(couple[1], target);
+            // Also check: if anyone has a 'parent' relationship pointing to this character
+            characters.forEach(char => {
+                const hasParent = characters.some(c =>
+                    c.relationships?.some(rel =>
+                        rel.relationType === 'parent' && (rel.target?._id === char._id)
+                    )
+                )
+                if (hasParent) {
+                    hasParentSet.add(char._id)
                 }
             })
 
-            // 3. Create Nodes & Edges
+            console.log('Characters with parents:', Array.from(hasParentSet).map(id =>
+                characters.find(c => c._id === id)?.name
+            ))
+
+            // ========== 3. FIND ROOTS ==========
+            const allRoots = characters.filter(c => !hasParentSet.has(c._id))
+            console.log('Found roots:', allRoots.map(r => r.name))
+
+            // ========== 4. CALCULATE LEVELS (BFS FROM ALL ROOTS) ==========
+            const levels = new Map<string, number>()
+            const queue: { id: string; level: number }[] = []
+
+            allRoots.forEach(root => {
+                levels.set(root._id, 0)
+                queue.push({ id: root._id, level: 0 })
+            })
+
+            while (queue.length > 0) {
+                const { id, level } = queue.shift()!
+                const children = childMap.get(id) || []
+
+                children.forEach(childId => {
+                    const currentChildLevel = levels.get(childId)
+                    // Update level if it's not set OR if we found a deeper path
+                    if (currentChildLevel === undefined || currentChildLevel < level + 1) {
+                        levels.set(childId, level + 1)
+                        queue.push({ id: childId, level: level + 1 })
+                    }
+                })
+            }
+
+            // ========== 5. SYNC SPOUSE LEVELS ==========
+            spouses.forEach(couple => {
+                const l1 = levels.get(couple[0])
+                const l2 = levels.get(couple[1])
+                if (l1 !== undefined && l2 === undefined) levels.set(couple[1], l1)
+                else if (l2 !== undefined && l1 === undefined) levels.set(couple[0], l2)
+                else if (l1 !== undefined && l2 !== undefined) {
+                    const bestLevel = Math.min(l1, l2)
+                    levels.set(couple[0], bestLevel)
+                    levels.set(couple[1], bestLevel)
+                }
+            })
+
+            // ========== 6. ADD VIRTUAL ROOT ==========
+            const virtualRootId = 'virtual-root'
+            levels.set(virtualRootId, -1)
+
+            console.log('Final levels:', Array.from(levels.entries()).map(([id, level]) => ({
+                name: characters.find(c => c._id === id)?.name,
+                level
+            })))
+
+            // ========== 7. CREATE NODES ==========
             const nodes = characters.map(char => {
                 let borderColor = '#c9a227'
                 if (char.type === 'PC') borderColor = '#60c0e0'
@@ -148,87 +266,104 @@ export default function RelationshipGraph({
                     level: levels.get(char._id) || 0,
                     borderWidth: 3,
                     color: { border: borderColor, background: '#0d0905', highlight: { border: '#fff' } },
-                    font: { color: '#e8d5a3', size: 14, face: 'Cinzel, serif', vadjust: 12 }
+                    font: { color: '#e8d5a3', size: 12, face: 'Cinzel, serif', vadjust: 12 }
                 }
             })
 
+            // Add invisible virtual root
+            nodes.push({
+                id: virtualRootId,
+                label: '',
+                shape: 'circle',
+                size: 0.1,
+                level: -1,
+                color: { background: 'transparent', border: 'transparent' }
+            } as any)
+
+            // ========== 8. CREATE EDGES ==========
             const edges: any[] = []
-            const processedEdges = new Set<string>()
 
-            // Bloodlines
-            characters.forEach(char => {
-                char.relationships?.forEach(rel => {
-                    const targetId = rel.target?._id || rel.target?._ref
-                    if (!targetId || (rel.relationType !== 'parent' && rel.relationType !== 'child')) return
-
-                    const fromId = rel.relationType === 'parent' ? targetId : char._id
-                    const toId = rel.relationType === 'parent' ? char._id : targetId
-                    const key = `${fromId}-${toId}`
-
-                    // Find the target character's name for the tooltip
-                    const targetChar = characters.find(c => c._id === (rel.target?._id || rel.target?._ref));
-                    const relationLabel = rel.relationType === 'parent' ? 'Parent of' : 'Child of';
-
-                    if (!processedEdges.has(key)) {
-                        processedEdges.add(key)
-                        edges.push({
-                            from: fromId,
-                            to: toId,
-                            color: '#c2410c',
-                            width: 3,
-                            // THE TOOLTIP:
-                            title: `<div style="padding: 4px; color: #e8d5a3;"><strong>${relationLabel}</strong> ${targetChar?.name}</div>`,
-                            smooth: { enabled: true, type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.7 }
-                        })
-                    }
-                })
-            })
-
-            // Marriage
-            spouses.forEach((ids, key) => {
-                const charA = characters.find(c => c._id === ids[0]);
-                const charB = characters.find(c => c._id === ids[1]);
-
+// 1. Connect all roots to virtual root
+// This keeps the "Forest" of separate families aligned at the same top level
+            allRoots.forEach(root => {
                 edges.push({
-                    from: ids[0],
-                    to: ids[1],
-                    color: '#9333ea',
-                    width: 2,
-                    // THE TOOLTIP:
-                    title: `<div style="padding: 4px; color: #e8d5a3;">Marriage: ${charA?.name} & ${charB?.name}</div>`,
-                    smooth: { type: 'continuous', roundness: 0 },
-                    physics: false
+                    from: virtualRootId,
+                    to: root._id,
+                    hidden: true,
+                    physics: false,
+                    smooth: { enabled: false }
                 })
             })
 
+// 2. Direct Bloodlines (Using the map from Section 1)
+// pId = Parent, cId = Child. This ensures the direction matches the BFS levels.
+            childMap.forEach((children, pId) => {
+                children.forEach(cId => {
+                    edges.push({
+                        from: pId,
+                        to: cId,
+                        relation:'blood',
+                        color: '#c2410c', // Your bloodline orange
+                        width: 2,
+                        smooth: {
+                            type: 'cubicBezier',
+                            forceDirection: 'vertical', // Ensures lines look like a tree
+                            roundness: 0.5
+                        }
+                    })
+                })
+            })
+
+// 3. Spouse Edges (Using the map from Section 1)
+            spouses.forEach(couple => {
+                edges.push({
+                    from: couple[0],
+                    to: couple[1],
+                    relation:'marriage',
+                    color: '#9333ea', // Your marriage purple
+                    width: 2,
+                    smooth: { type: 'curvedCW', roundness: 0.4 },
+                    physics: false // Prevents spouses from pulling each other out of their levels
+                })
+            })
+
+            // ========== 9. NETWORK OPTIONS (Hierarchical Layout) ==========
             const options = {
                 layout: {
                     hierarchical: {
                         enabled: true,
-                        direction: 'DU',
-                        levelSeparation: 180,
-                        nodeSpacing: 250,
-                        sortMethod: 'directed'
+                        direction: 'UD',
+                        levelSeparation: 150,
+                        nodeSpacing: 200,
+                        treeSpacing: 250,
+                        sortMethod: 'directed',
+                        blockShifting: false, // Prevents the whole tree from jumping
+                        edgeMinimization: false
                     }
                 },
                 physics: { enabled: false },
+                nodes: {
+                    shape: 'circularImage',
+                    borderWidth: 3,
+                    size: 45,
+                    font: { color: '#fcd34d', size: 12, face: 'Cinzel, serif' }
+                },
+                edges: {
+                    smooth: { type: 'cubicBezier', roundness: 0.5 },
+                    arrows: { to: { enabled: false } }
+                },
                 interaction: {
                     dragNodes: true,
                     zoomView: true,
                     dragView: true,
                     hover: true,
-                    tooltipDelay: 100,
-                    navigationButtons: false
-                },
-                // Add this for better tooltip styling
-                configure: {
-                    enabled: false
+                    tooltipDelay: 100
                 }
-            };
+            }
 
-            // 4. Initialize Network
+            // ========== 10. INITIALIZE NETWORK ==========
             nodesDataSetRef.current = new DataSet(nodes)
-            edgesDataSetRef.current = new DataSet(edges);
+            edgesDataSetRef.current = new DataSet(edges)
             networkRef.current = new Network(
                 containerRef.current!,
                 {
@@ -236,84 +371,19 @@ export default function RelationshipGraph({
                     edges: edgesDataSetRef.current
                 } as any,
                 options as any
-            );
+            )
 
-            let currentTooltip: HTMLDivElement | null = null;
+            // Fit after render
+            setTimeout(() => {
+                networkRef.current?.fit({ animation: true })
+            }, 100)
 
-            networkRef.current.on('hoverEdge', (params: any) => {
-                if (params.edge) {
-                    const edge = edgesDataSetRef.current.get(params.edge);
-                    if (edge && edge.title) {
-                        // Remove existing tooltip
-                        if (currentTooltip) currentTooltip.remove();
-
-                        // Create tooltip element
-                        const tooltip = document.createElement('div');
-                        tooltip.innerHTML = edge.title;
-                        tooltip.style.position = 'fixed';
-                        tooltip.style.backgroundColor = '#0d0905';
-                        tooltip.style.border = '1px solid #c9a227';
-                        tooltip.style.color = '#e8d5a3';
-                        tooltip.style.padding = '6px 14px';
-                        tooltip.style.borderRadius = '6px';
-                        tooltip.style.fontSize = '11px';
-                        tooltip.style.fontFamily = 'Cinzel, serif';
-                        tooltip.style.fontWeight = 'bold';
-                        tooltip.style.letterSpacing = '0.08em';
-                        tooltip.style.textTransform = 'uppercase';
-                        tooltip.style.boxShadow = '0 4px 15px rgba(0,0,0,0.6)';
-                        tooltip.style.zIndex = '1000';
-                        tooltip.style.whiteSpace = 'nowrap';
-                        tooltip.style.backdropFilter = 'blur(4px)';
-                        tooltip.style.pointerEvents = 'none';
-
-                        document.body.appendChild(tooltip);
-                        currentTooltip = tooltip;
-
-                        // Position tooltip near mouse
-                        const updateTooltipPosition = (e: MouseEvent) => {
-                            if (tooltip) {
-                                tooltip.style.left = `${e.clientX + 15}px`;
-                                tooltip.style.top = `${e.clientY - 40}px`;
-                            }
-                        };
-
-                        // Add mouse move listener
-                        const onMouseMove = (e: MouseEvent) => {
-                            if (tooltip) {
-                                tooltip.style.left = `${e.clientX + 15}px`;
-                                tooltip.style.top = `${e.clientY - 40}px`;
-                            }
-                        };
-
-                        document.addEventListener('mousemove', onMouseMove);
-
-                        // Store the listener to remove it later
-                        (tooltip as any)._mouseMoveListener = onMouseMove;
-                    }
-                }
-            });
-
-            networkRef.current.on('blurEdge', () => {
-                if (currentTooltip) {
-                    // Remove mouse move listener
-                    if ((currentTooltip as any)._mouseMoveListener) {
-                        document.removeEventListener('mousemove', (currentTooltip as any)._mouseMoveListener);
-                    }
-                    currentTooltip.remove();
-                    currentTooltip = null;
-                }
-            });
-
-            // Click Handler
-            // Click Handler with safety checks
+            // ========== 11. CLICK HANDLER ==========
 
             networkRef.current.on('click', (params: any) => {
-                // Clear previous timeout to prevent multiple rapid updates
-                if (clickTimeout) clearTimeout(clickTimeout);
+                if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
 
-                clickTimeout = setTimeout(() => {
-                    // SAFETY CHECKS - Make sure everything exists
+                clickTimeoutRef.current = setTimeout(() => {
                     if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) {
                         console.warn("Network or DataSets not ready");
                         return;
@@ -322,8 +392,6 @@ export default function RelationshipGraph({
                     const clickedId = (params.nodes && params.nodes.length > 0) ? params.nodes[0] : null;
                     const connectedAllies: string[] = [];
                     const connectedRivals: string[] = [];
-                    // Get connected family members
-                    //const connectedIds = clickedId ? getConnectedIds(clickedId) : [];
 
                     if (clickedId) {
                         const character = characters.find(c => c._id === clickedId);
@@ -337,29 +405,21 @@ export default function RelationshipGraph({
                         }
                     }
 
-
                     try {
-                        // 1. UPDATE NODES
+                        // 1. FREEZE Layout
+                        networkRef.current.setOptions({
+                            layout: { hierarchical: { enabled: false } },
+                            physics: { enabled: false }
+                        });
+
+                        // 2. Map node updates (same color logic as before)
                         const nodeUpdates = characters.map((char) => {
-                            //const isFocused = !clickedId || connectedIds.includes(char._id);
                             const isSelected = char._id === clickedId;
                             const isAlly = connectedAllies.includes(char._id);
                             const isRival = connectedRivals.includes(char._id);
                             const isConnected = !clickedId || isSelected || isAlly || isRival;
 
-                            let bColor;
-                            if (isSelected) {
-                                bColor = '#ffffff';  // White for selected
-                            } else if (isAlly) {
-                                bColor = '#22c55e';  // Green for allies
-                            } else if (isRival) {
-                                bColor = '#ef4444';  // Red for rivals
-                            } else {
-                                // Default by type
-                                bColor = char.type === 'PC' ? '#60c0e0' :
-                                    char.type === 'Ally' ? '#60e080' :
-                                        char.type === 'Antagonist' ? '#e06060' : '#c9a227';
-                            }
+                            const bColor = isSelected ? '#ffffff' : isAlly ? '#22c55e' : isRival ? '#ef4444' : (char.type === 'PC' ? '#60c0e0' : char.type === 'Ally' ? '#60e080' : char.type === 'Antagonist' ? '#e06060' : '#c9a227');
 
                             return {
                                 id: char._id,
@@ -370,54 +430,68 @@ export default function RelationshipGraph({
                                 font: { color: isConnected ? '#e8d5a3' : '#e8d5a333' }
                             };
                         });
+                        nodesDataSetRef.current.update(nodeUpdates);
 
-                        // 2. UPDATE EDGES - WITH SAFETY CHECK
-                        if (edgesDataSetRef.current) {
-                            const edgeIds = edgesDataSetRef.current.getIds();
-                            const edgeUpdates = edgeIds.map((id: any) => {
-                                const edge = edgesDataSetRef.current.get(id);
-                                if (!edge) return null;
+                        // 3. Update Edges logic (same as before)
+                        const edgeIds = edgesDataSetRef.current.getIds();
+                        const edgeUpdates = edgeIds.map((id: any) => {
+                            const edge = edgesDataSetRef.current.get(id) as any;
+                            if (!edge) return null;
+                            const isConnected = !clickedId || (edge.from === clickedId || edge.to === clickedId);
+                            const baseColor = edge.relation === 'marriage' ? '#9333ea' : '#c2410c';
+                            return { id, color: isConnected ? baseColor : `${baseColor}1a`, width: isConnected ? 3 : 1 };
+                        });
+                        edgesDataSetRef.current.update(edgeUpdates);
 
-                                const isConnected = !clickedId || (edge.from === clickedId || edge.to === clickedId);
-                                const baseColor = edge.color || '#c2410c';
-
-                                return {
-                                    id: id,
-                                    color: isConnected ? baseColor : `${baseColor}1a`,
-                                    width: isConnected ? 3 : 1
-                                };
-                            }).filter(Boolean);
-
-                            edgesDataSetRef.current.update(edgeUpdates);
-                        }
-
-                        // 3. UPDATE NODES (always safe if nodesDataSetRef exists)
-                        if (nodesDataSetRef.current) {
-                            nodesDataSetRef.current.update(nodeUpdates);
-                        }
-
-                        // 4. NOTIFY WRAPPER
-                        if (clickedId && onNodeClick) {
+                        // 4. NOTIFY WRAPPER (Fixed: No nested listener)
+                        if (clickedId && onNodeClickRef.current) {
                             const char = characters.find(c => c._id === clickedId);
-                            if (char) onNodeClick(char.name, char.currentLocation?._ref);
-                        } else if (!clickedId && onNodeClick) {
-                            onNodeClick('', undefined);  // ← THIS LINE IS CRITICAL
+                            if (char) onNodeClickRef.current(char.name, char.currentLocation?._ref);
+                        } else if (!clickedId && onNodeClickRef.current) {
+                            onNodeClickRef.current('', undefined);
                         }
+
+                        // 5. RE-ENABLE Layout
+                        setTimeout(() => {
+                            if (networkRef.current) {
+                                networkRef.current.setOptions({ layout: { hierarchical: { enabled: true } } });
+                            }
+                        }, 50);
+
                     } catch (err) {
                         console.error("Graph Update Error:", err);
                     }
-                }, 50); // Small delay to prevent rapid clicks from breaking
+                }, 100);
             });
-
-            setTimeout(() => networkRef.current?.fit({ animation: true, maxZoomLevel: 1 }), 100)
         }
-
         initNetwork()
         return () => {
-            if (clickTimeout) clearTimeout(clickTimeout);
-            if (networkRef.current) networkRef.current.destroy();
+            if (networkRef.current) {
+                networkRef.current.destroy();
+                networkRef.current = null; }
         }
-    }, [characters, isMounted, onNodeClick, hiddenTypes]) // Removed selectedCharacterId from deps to prevent re-renders
+    }, [characters, isMounted])
+
+
+    useEffect(() => {
+        if (!nodesDataSetRef.current) return;
+
+        // This updates node visibility based on the legend (hiddenTypes)
+        const allIds = nodesDataSetRef.current.getIds();
+        const updates = allIds.map((id: string) => {
+            const char = characters.find(c => c._id === id);
+            if (!char) return null;
+
+            // Hide node if its type is in the hiddenTypes array
+            const isHidden = hiddenTypes.includes(char.type);
+            return {
+                id: id,
+                hidden: isHidden
+            };
+        }).filter(Boolean);
+
+        nodesDataSetRef.current.update(updates);
+    }, [hiddenTypes, characters]);
 
     return (
         <div className="relative w-full bg-[#050505] rounded-xl border-2 border-amber-900/30 overflow-hidden shadow-2xl">

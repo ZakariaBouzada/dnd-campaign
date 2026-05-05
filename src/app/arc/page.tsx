@@ -249,7 +249,7 @@ export default async function ChronicleArcPage() {
                     <div className="lg:col-span-2">
                         <div className="flex items-center gap-4 mb-8">
                             <h2 className="text-xl font-serif text-amber-400 tracking-wide whitespace-nowrap">
-                                Recent Chronicles
+                                The Story
                             </h2>
                             <div className="flex-1 h-px bg-amber-900/40"/>
                         </div>

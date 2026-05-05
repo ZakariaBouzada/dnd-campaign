@@ -1,7 +1,9 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useState, useCallback, useMemo, memo } from 'react'
+import { useRouter } from 'next/navigation'
+
 
 const RelationshipGraph = dynamic(
     () => import('@/components/RelationshipGraph'),
@@ -61,17 +63,23 @@ export default function RelationshipGraphWrapper({ characters, highlightCharacte
         characters.find(c => c.name === highlightCharacter) || null
     )
     const [lastLocationId, setLastLocationId] = useState<string | null>(null)
+    const router = useRouter();
 
-    const handleNodeClick = (characterName: string, locationId?: string) => {
+    const handleNodeClick = useCallback((characterName: string, locationId?: string) => {
         if (!characterName || characterName === '') {
             setSelectedCharacter(null)
             setLastLocationId(null)
+            window.history.pushState({}, '', '/relationships');
             return
         }
         const charObj = characters.find(c => c.name === characterName)
         setSelectedCharacter(charObj || null)
         if (locationId) setLastLocationId(locationId)
-    }
+        window.history.pushState({}, '', `/relationships?character=${encodeURIComponent(characterName)}`);
+    }, [characters, router]); // Only recreate if characters or router change
+
+// 3. Memoize the characters array to ensure it's a stable reference
+    const stableCharacters = useMemo(() => characters, [characters]);
 
     return (
         <>
@@ -221,8 +229,7 @@ export default function RelationshipGraphWrapper({ characters, highlightCharacte
             )}
 
             <RelationshipGraph
-                key={highlightCharacter || 'default'}
-                characters={characters}
+                characters={stableCharacters}
                 onNodeClick={handleNodeClick}
                 highlightNode={highlightCharacter}
             />

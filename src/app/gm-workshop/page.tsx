@@ -205,7 +205,7 @@ export default function GMWorkshopPage() {
                 {/* 2. THE REALISTIC, ANGLED CANDLE (Top Right) */}
                 <div
                     /* CHANGED: Changed -top-5 to top-10 to bring it DOWN onto the wood */
-                    className="absolute top-5 right-10 w-48 h-64 opacity-95 pointer-events-none select-none hidden xl:block"
+                    className="absolute -top-10 right-10 w-64 h-80 opacity-95 pointer-events-none select-none hidden xl:block"
                     style={{
                         perspective: '1000px',
                         zIndex: 20,
@@ -229,7 +229,7 @@ export default function GMWorkshopPage() {
 
                         {/* 2. THE CONTACT SHADOW: Dark spot right at the base */}
                         <div
-                            className="absolute bottom-17 left-1/2 -translate-x-1/2 w-20 h-8 bg-black/90 blur-sm rounded-full"/>
+                            className="absolute bottom-18 left-1/2 -translate-x-1/2 w-28 h-10 bg-black/90 blur-sm rounded-full"/>
 
                         {/* 3. THE CANDLE IMAGE */}
                         <img
@@ -256,6 +256,63 @@ export default function GMWorkshopPage() {
                         />
                     </div>
                 </div>
+                <div
+                    className="absolute inset-0 pointer-events-none rounded-[10px] bg-[radial-gradient(circle_at_85%_15%,rgba(255,180,100,0.15)_0%,rgba(0,0,0,0.2)_100%)]"
+                />
+
+                {/* 2. THE PEN/QUILL (Top Right, angled like a scribe left it) */}
+                <div
+                    className="absolute bottom-80 -right-30 w-64 h-80 opacity-95 pointer-events-none select-none hidden xl:block"
+                    style={{
+                        perspective: '1000px',
+                        zIndex: 20,
+                        transform: 'scale(1.8)',
+                        transformOrigin: 'top right',
+                    }}
+                >
+                    {/* Rotation Wrapper: Tilts the quill naturally */}
+                    <div
+                        className="w-full h-full relative"
+                        style={{
+                            transform: 'rotateX(15deg) rotateY(-10deg) rotateZ(75deg)',
+                            transformStyle: 'preserve-3d',
+                        }}
+                    >
+                        {/* 1. THE STRETCHED SHADOW (The "Body" shadow) */}
+                        <div
+                            className="absolute bottom-10 left-55 w-[100%] h-8 bg-black/50 blur-md origin-left"
+                            style={{
+                                // Skewing the shadow so it points AWAY from the top-right candle
+                                transform: 'rotateZ(40deg) skewX(-20deg) translateX(-90%)',
+                            }}
+                        />
+
+                        {/* 2. THE NIB CONTACT SHADOW (Sharp & Dark) */}
+                        <div
+                            className="absolute bottom-9 left-58 w-2 h-1 bg-black/90 blur-[2px] rounded-full"
+                            style={{ transform: 'translateY(2px)' }}
+                        />
+
+                        {/* 3. THE PEN/QUILL IMAGE */}
+                        <img
+                            src="/images/textures/pen.webp"
+                            alt="Scribe's Pen"
+                            className="relative z-10 w-full h-auto object-contain"
+                            style={{
+                                filter: 'brightness(0.9) contrast(1.1) drop-shadow(0 5px 10px rgba(0,0,0,0.3))',
+                            }}
+                        />
+
+                        {/* 4. INK GLOW (Subtle dark/brown glow around the nib) */}
+                        <div
+                            className="absolute bottom-5 left-1/4 w-16 h-16 bg-indigo-950/20 blur-2xl rounded-full"
+                            style={{transform: 'translateX(-25%)'}}
+                        />
+
+                    </div>
+                </div>
+
+
                 <div className="relative z-10 max-w-full px-8 py-10">
                     <BackNavigation/>
 
